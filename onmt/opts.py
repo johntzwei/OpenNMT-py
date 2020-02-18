@@ -477,6 +477,8 @@ def train_opts(parser):
                    "max_grad_norm")
     group.add('--dropout', '-dropout', type=float, default=[0.3], nargs='+',
               help="Dropout probability; applied in LSTM stacks.")
+    group.add('--word_dropout', '-word_dropout', type=float, default=0.,
+              help="Word dropout with pad probability;")
     group.add('--attention_dropout', '-attention_dropout', type=float,
               default=[0.1], nargs='+',
               help="Attention Dropout probability.")

@@ -1,7 +1,9 @@
 """Define RNN-based encoders."""
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torch.nn.modules import Dropout
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
@@ -23,8 +25,8 @@ class RNNEncoder(EncoderBase):
     """
 
     def __init__(self, rnn_type, bidirectional, num_layers,
-                 hidden_size, dropout=0.0, embeddings=None,
-                 use_bridge=False):
+                 hidden_size, dropout=0.0, word_dropout=0.0, 
+                 embeddings=None, use_bridge=False):
         super(RNNEncoder, self).__init__()
         assert embeddings is not None
 
@@ -48,6 +50,10 @@ class RNNEncoder(EncoderBase):
                                     hidden_size,
                                     num_layers)
 
+        self.word_dropout = None
+        if word_dropout > 0.:
+            self.word_dropout = Dropout(word_dropout)
+
     @classmethod
     def from_opt(cls, opt, embeddings):
         """Alternate constructor."""
@@ -57,6 +63,7 @@ class RNNEncoder(EncoderBase):
             opt.enc_layers,
             opt.enc_rnn_size,
             opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
+            opt.word_dropout,
             embeddings,
             opt.bridge)
 
@@ -64,8 +71,16 @@ class RNNEncoder(EncoderBase):
         """See :func:`EncoderBase.forward()`"""
         self._check_args(src, lengths)
 
+        # word dropout mask
+        if self.word_dropout:
+            src_padding_idx = 1
+            dropout_mask = self.word_dropout(torch.ones(src.shape, device=src.device)).long()
+            inv_dropout_mask = 1 - dropout_mask
+            src = src * dropout_mask + inv_dropout_mask * src_padding_idx
+
         emb = self.embeddings(src)
         # s_len, batch, emb_dim = emb.size()
+
 
         packed_emb = emb
         if lengths is not None and not self.no_pack_padded_seq:
