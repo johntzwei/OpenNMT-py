@@ -108,7 +108,8 @@ def get_fields(
     dynamic_dict=False,
     with_align=False,
     src_truncate=None,
-    tgt_truncate=None
+    tgt_truncate=None,
+    bert=None
 ):
     """
     Args:
@@ -151,7 +152,8 @@ def get_fields(
                         "include_lengths": True,
                         "pad": pad, "bos": None, "eos": None,
                         "truncate": src_truncate,
-                        "base_name": "src"}
+                        "base_name": "src",
+                        "bert" : bert }
     fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
 
     tgt_field_kwargs = {"n_feats": n_tgt_feats,

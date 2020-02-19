@@ -188,7 +188,28 @@ def text_fields(**kwargs):
             init_token=bos, eos_token=eos,
             pad_token=pad, tokenize=tokenize,
             include_lengths=use_len)
+
+        # bert
+        if name =='src' and kwargs['bert']:
+            from transformers import BertTokenizer
+            tokenizer = BertTokenizer.from_pretrained('bert-base-german-cased')
+
+            # TODO support truncate
+            # overwite the field
+            feat = Field(
+                sequential=True,
+                use_vocab=False,
+                init_token=tokenizer.cls_token_id,
+                eos_token=tokenizer.sep_token_id,
+                tokenize=tokenizer.encode,
+                batch_first=False,
+                pad_token=tokenizer.pad_token_id,
+                unk_token=tokenizer.unk_token_id,
+                include_lengths=use_len
+            )
+
         fields_.append((name, feat))
     assert fields_[0][0] == base_name  # sanity check
+
     field = TextMultiField(fields_[0][0], fields_[0][1], fields_[1:])
     return field

@@ -298,6 +298,10 @@ def preprocess_opts(parser):
     group.add('--filter_valid', '-filter_valid', action='store_true',
               help='Filter validation data by src and/or tgt length')
 
+    # Bert options
+    group.add('--bert', '-bert', type=str,
+              help='Specify tokenization+numericalization for bert models')
+
     # Data processing options
     group = parser.add_argument_group('Random')
     group.add('--shuffle', '-shuffle', type=int, default=0,
