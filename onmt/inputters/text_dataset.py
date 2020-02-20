@@ -192,17 +192,16 @@ def text_fields(**kwargs):
         # bert
         if name =='src' and kwargs['bert']:
             from transformers import BertTokenizer
-            tokenizer = BertTokenizer.from_pretrained('bert-base-german-cased')
+            tokenizer = BertTokenizer.from_pretrained(kwargs['bert'])
 
             # TODO support truncate
             # overwite the field
             feat = Field(
                 sequential=True,
                 use_vocab=False,
-                init_token=tokenizer.cls_token_id,
-                eos_token=tokenizer.sep_token_id,
+                init_token=None,
+                eos_token=None,
                 tokenize=tokenizer.encode,
-                batch_first=False,
                 pad_token=tokenizer.pad_token_id,
                 unk_token=tokenizer.unk_token_id,
                 include_lengths=use_len

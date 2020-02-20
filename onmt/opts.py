@@ -69,7 +69,7 @@ def model_opts(parser):
               help='Data type of the model.')
 
     group.add('--encoder_type', '-encoder_type', type=str, default='rnn',
-              choices=['rnn', 'brnn', 'mean', 'transformer', 'cnn'],
+              choices=['rnn', 'brnn', 'mean', 'transformer', 'cnn', 'bert'],
               help="Type of encoder layer to use. Non-RNN layers "
                    "are experimental. Options are "
                    "[rnn|brnn|mean|transformer|cnn].")
@@ -128,6 +128,12 @@ def model_opts(parser):
               help="Type of context gate to use. "
                    "Do not select for no context gate.")
 
+    # bert options
+    group.add('--bert', '-bert', type=str, 
+              help="Pretrained bert encoder model name.")
+    group.add('--fine_tune_bert', '-fine_tune_bert', action="store_true", 
+              help="Whether to fine tune the pretrained model")
+ 
     # Attention options
     group = parser.add_argument_group('Model- Attention')
     group.add('--global_attention', '-global_attention',
