@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn.modules import LayerNorm
 
 from onmt.models.stacked_rnn import StackedLSTM, StackedGRU
 from onmt.modules import context_gate_factory, GlobalAttention
@@ -83,7 +84,7 @@ class RNNDecoderBase(DecoderBase):
     def __init__(self, rnn_type, bidirectional_encoder, num_layers,
                  hidden_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
-                 copy_attn=False, dropout=0.0, embeddings=None,
+                 copy_attn=False, dropout=0.0, embeddings=None, dec_layer_norm=False, 
                  reuse_copy_attn=False, copy_attn_type="general"):
         super(RNNDecoderBase, self).__init__(
             attentional=attn_type != "none" and attn_type is not None)
@@ -137,6 +138,11 @@ class RNNDecoderBase(DecoderBase):
         self._reuse_copy_attn = reuse_copy_attn and copy_attn
         if self._reuse_copy_attn and not self.attentional:
             raise ValueError("Cannot reuse copy attention with no attention.")
+        
+        self.dec_layer_norm = dec_layer_norm
+        if dec_layer_norm:
+            self.input_layer_norm = LayerNorm(self._input_size)
+            self.hidden_layer_norm = LayerNorm(hidden_size)
 
     @classmethod
     def from_opt(cls, opt, embeddings):
@@ -154,6 +160,7 @@ class RNNDecoderBase(DecoderBase):
             opt.dropout[0] if type(opt.dropout) is list
             else opt.dropout,
             embeddings,
+            opt.dec_layer_norm,
             opt.reuse_copy_attn,
             opt.copy_attn_type)
 
@@ -387,7 +394,12 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         # Input feed concatenates hidden state with
         # input at every time step.
         for emb_t in emb.split(1):
-            decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
+            if self.dec_layer_norm:
+                decoder_input = self.input_layer_norm(torch.cat([emb_t.squeeze(0), input_feed], 1))
+                dec_state = (self.hidden_layer_norm(dec_state[0]), dec_state[1])
+            else:
+                decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
+
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
             if self.attentional:
                 decoder_output, p_attn = self.attn(
