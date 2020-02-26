@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.nn.modules import Dropout
+from torch.nn.modules import Dropout, LayerNorm
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 
@@ -26,7 +26,7 @@ class RNNEncoder(EncoderBase):
 
     def __init__(self, rnn_type, bidirectional, num_layers,
                  hidden_size, dropout=0.0, word_dropout=0.0, 
-                 embeddings=None, use_bridge=False):
+                 enc_layer_norm=False, embeddings=None, use_bridge=False):
         super(RNNEncoder, self).__init__()
         assert embeddings is not None
 
@@ -54,6 +54,11 @@ class RNNEncoder(EncoderBase):
         if word_dropout > 0.:
             self.word_dropout = Dropout(word_dropout)
 
+        self.enc_layer_norm = enc_layer_norm
+        if self.enc_layer_norm:
+            self.input_layer_norm = LayerNorm(embeddings.embedding_size)
+            self.hidden_layer_norm = LayerNorm(hidden_size)
+
     @classmethod
     def from_opt(cls, opt, embeddings):
         """Alternate constructor."""
@@ -64,6 +69,7 @@ class RNNEncoder(EncoderBase):
             opt.enc_rnn_size,
             opt.dropout[0] if type(opt.dropout) is list else opt.dropout,
             opt.word_dropout,
+            opt.enc_layer_norm,
             embeddings,
             opt.bridge)
 
@@ -81,17 +87,21 @@ class RNNEncoder(EncoderBase):
         emb = self.embeddings(src)
         # s_len, batch, emb_dim = emb.size()
 
+        enc_state = None
+        memory_bank = []
+        for e in emb.split(1):
+            # apply layer norm
+            if self.enc_layer_norm:
+                pe = self.input_layer_norm(e)
+            if self.enc_layer_norm and enc_state:
+                enc_state = (self.hidden_layer_norm(enc_state[0]), enc_state[1])
 
-        packed_emb = emb
-        if lengths is not None and not self.no_pack_padded_seq:
-            # Lengths data is wrapped inside a Tensor.
-            lengths_list = lengths.view(-1).tolist()
-            packed_emb = pack(emb, lengths_list)
+            # rnn output
+            rnn_output, enc_state = self.rnn(e, enc_state)
+            memory_bank.append(rnn_output)
 
-        memory_bank, encoder_final = self.rnn(packed_emb)
-
-        if lengths is not None and not self.no_pack_padded_seq:
-            memory_bank = unpack(memory_bank)[0]
+        memory_bank = torch.cat(memory_bank)
+        encoder_final = enc_state
 
         if self.use_bridge:
             encoder_final = self._bridge(encoder_final)
