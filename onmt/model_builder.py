@@ -211,7 +211,10 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         generator.load_state_dict(checkpoint['generator'], strict=False)
     else:
         if model_opt.param_init != 0.0:
-            for p in model.parameters():
+            for name, p in model.named_parameters():
+                if 'bert' in name:
+                    continue
+
                 p.data.uniform_(-model_opt.param_init, model_opt.param_init)
             for p in generator.parameters():
                 p.data.uniform_(-model_opt.param_init, model_opt.param_init)
