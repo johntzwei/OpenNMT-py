@@ -69,6 +69,7 @@ class BertEncoder(EncoderBase):
             memory_bank = self.bert(bert_src, attention_mask=attention_mask)[0]    # [batch_size, seq_len, 768]
         else:
             with torch.no_grad():
+                self.bert.eval()
                 memory_bank = self.bert(bert_src, attention_mask=attention_mask)[0]    # [batch_size, seq_len, 768]
 
         # bert outputs [batch_size, seq_len, bert_dims] so it needs to be permuted
