@@ -28,13 +28,16 @@ class BertEncoder(EncoderBase):
     """
 
     def __init__(self, bert_str, fine_tune_bert, decoder_rnn_size,
-            word_dropout=None):
+            decoder_layers, word_dropout=None):
         super(BertEncoder, self).__init__()
 
         self.fine_tune_bert = fine_tune_bert
         self.bert = BertModel.from_pretrained(bert_str)
 
         self.decoder_rnn_size = decoder_rnn_size
+        self.linear_out = nn.Linear(768, decoder_rnn_size)
+
+        self.decoder_layers = decoder_layers
 
         self.word_dropout = None
         if word_dropout > 0.:
@@ -46,6 +49,7 @@ class BertEncoder(EncoderBase):
         return cls(opt.bert,
                 opt.fine_tune_bert,
                 opt.dec_rnn_size,
+                opt.dec_layers,
                 opt.word_dropout)
 
     def forward(self, src, lengths=None):
@@ -74,9 +78,10 @@ class BertEncoder(EncoderBase):
 
         # bert outputs [batch_size, seq_len, bert_dims] so it needs to be permuted
         memory_bank = memory_bank.permute([1, 0, 2])
+        memory_bank = self.linear_out(memory_bank)
 
         # only works for one-layer lstm currently
-        zeros = torch.ones(1, batch_size, self.decoder_rnn_size).to(src.device)
+        zeros = torch.ones(self.decoder_layers, batch_size, self.decoder_rnn_size).to(src.device)
         encoder_final = (zeros, zeros)
 
         return encoder_final, memory_bank, lengths
